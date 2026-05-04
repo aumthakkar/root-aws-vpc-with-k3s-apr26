@@ -37,7 +37,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
-      - name: terraform init, validate and plan
+      - name: Terraform Plan
+        env:
+          TF_VAR_aws_region: ${{ secrets.TF_VAR_aws_region }}
         run: |
           terraform init
           terraform validate
@@ -76,7 +78,7 @@ jobs:
           name: tfplan
           path: .
 
-      - name: terraform init, apply 
+      - name: Terraform Apply
         run: |
           terraform init
           terraform apply -auto-approve tfplan
@@ -101,7 +103,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6
 
-      - name: terraform destroy
+      - name: Terraform Destroy
         run: | 
           terraform init
           terraform destroy -auto-approve
