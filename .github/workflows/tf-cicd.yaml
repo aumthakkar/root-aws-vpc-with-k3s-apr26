@@ -1,0 +1,109 @@
+name: AWS VPC Terraform Workflow
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Manual trigger jobs
+        default: destroy
+        required: true
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: "eu-north-1"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: latest
+
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: terraform init, validate and plan
+        run: |
+          terraform init
+          terraform validate
+          terraform plan -input=false out=tfplan
+
+      - name: Upload tfplan artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: tfplan
+          path: tfplan
+
+  apply:
+    if: inputs.action == 'apply'
+    needs: plan
+    environment: apply-approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: "eu-north-1"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: latest
+
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        
+      - name: Download tfplan artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: tfplan
+          path: .
+
+      - name: terraform init, apply 
+        run: |
+          terraform init
+          terraform apply -auto-approve tfplan
+
+  destroy:
+    if: inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    environment: destroy-approval
+    steps:
+      - name: Setup AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: "eu-north-1"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: latest
+
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: terraform destroy
+        run: | 
+          terraform init
+          terraform destroy -auto-approve
+
+
