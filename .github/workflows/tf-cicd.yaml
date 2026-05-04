@@ -41,7 +41,7 @@ jobs:
         run: |
           terraform init
           terraform validate
-          terraform plan -input=false out=tfplan
+          terraform plan -input=false -out=tfplan
 
       - name: Upload tfplan artifact
         uses: actions/upload-artifact@v7
